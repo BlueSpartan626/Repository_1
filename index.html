@@ -2,33 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Babylon.js — Walkable 3D Space</title>
-    <meta name="description" content="Interactive 3D scene with Babylon.js. WASD + mouse to move, Space to jump." />
- 
-    <!-- Styles for fullscreen canvas -->
-    <link rel="stylesheet" href="./styles.css" />
- 
-    <!-- Babylon.js core + loaders + GUI from official CDN (fast + cacheable) -->
-    <!-- You can pin versions if you prefer, e.g. https://cdn.babylonjs.com/babylon.js?v=6.51.0 -->
-    <script src="https://cdn.babylonjs.com/babylon.js" defer></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js" defer></script>
-    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js" defer></script>
- 
-    <!-- Your scene code -->
-    <script src="./app.js" defer></script>
+    <title>Babylon.js – 3D Environment with Interactive Objects</title>
+    <meta
+      name="description"
+      content="Simple Babylon.js 3D scene with 5 interactive objects (click to change colour)."
+    />
+
+    <!-- Our CSS -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Babylon.js from CDN (like the tutorials do) -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
   </head>
   <body>
-    <!--
-      The render <canvas>. We give it a tabindex so it can receive keyboard focus.
-      Clicking the canvas will lock the mouse pointer for FPS‑style look.
-    -->
-    <canvas id="renderCanvas" tabindex="0"></canvas>
- 
-    <noscript>
-      <p style="color:#fff;position:fixed;left:1rem;bottom:1rem;">
-        This site needs JavaScript enabled to display the 3D scene.
-      </p>
-    </noscript>
+    <!-- Info panel above the canvas -->
+    <div id="infoPanel">
+      Click any 3D shape to interact with it.
+    </div>
+
+    <!-- Canvas where Babylon will render the 3D scene -->
+    <canvas id="renderCanvas"></canvas>
+
+    <!-- Our own JavaScript file with the scene code -->
+    <script src="app.js"></script>
   </body>
 </html>

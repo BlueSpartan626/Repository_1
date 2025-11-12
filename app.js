@@ -1,230 +1,195 @@
-App.js:
- 
-/*
-  Babylon.js Walkable Scene (WASD + Mouse Look + Jump)
-  ---------------------------------------------------
-  Features:
-  • UniversalCamera with collisions, gravity, pointer lock mouselook
-  • WASD movement and SPACE to jump
-  • Hemispheric + Directional lights, real-time shadows
-  • Skybox, large ground, perimeter walls, boxes, and a ramp
-  • Minimal UI crosshair + on-screen help (Babylon GUI)
- 
-  How to extend:
-  • Replace primitives with your own GLB/GLTF: use SceneLoader.ImportMesh
-  • Add more lights, post-processes, PBR materials, etc.
-  • Tune camera.speed, angularSensibility, ellipsoid to your liking
-*/
- 
-// Get the <canvas> and create the Babylon engine
-const canvas = document.getElementById("renderCanvas");
-const engine = new BABYLON.Engine(canvas, true, {
-  preserveDrawingBuffer: true,
-  stencil: true,
-  disableWebGL2Support: false,
-});
- 
-/**
- * Main scene factory.
- * Creates camera, lights, ground, skybox, obstacles, and basic UI.
- */
-const createScene = function () {
-  const scene = new BABYLON.Scene(engine);
- 
-  // A very dark blue-ish clear color (subtle night vibe)
-  scene.clearColor = new BABYLON.Color4(0.02, 0.03, 0.05, 1.0);
- 
-  // Enable collisions for the whole scene and set gravity (Y-)
-  scene.collisionsEnabled = true;
-  scene.gravity = new BABYLON.Vector3(0, -0.5, 0);
- 
-  // --- Camera ---------------------------------------------------------------
-  // UniversalCamera supports mouse look, WASD, collisions and gravity.
-  const camera = new BABYLON.UniversalCamera(
-    "playerCamera",
-    new BABYLON.Vector3(0, 2, -6), // start position (eye ~2m high)
-    scene
-  );
- 
-  // Attach controls: left-click to rotate, wheel to zoom. Pointer lock on click below.
-  camera.attachControl(canvas, true);
- 
-  // Camera tuning for FPS-like feel
-  camera.minZ = 0.1;              // near clipping
-  camera.speed = 0.6;             // movement speed (tweak to taste)
-  camera.angularSensibility = 3000; // mouse look sensitivity (higher = slower)
- 
-  // Make the camera a "character capsule" for collisions
-  camera.ellipsoid = new BABYLON.Vector3(0.5, 1.0, 0.5); // ~1m tall + radius
-  camera.checkCollisions = true;   // collide against geometry with checkCollisions=true
-  camera.applyGravity = true;      // let gravity affect the camera
- 
-  // Standard WASD mapping (arrows already mapped by default)
-  camera.keysUp.push(87);    // W
-  camera.keysDown.push(83);  // S
-  camera.keysLeft.push(65);  // A
-  camera.keysRight.push(68); // D
- 
-  // Request pointer lock on click for proper mouselook
-  canvas.addEventListener("click", () => {
-    const req = canvas.requestPointerLock ||
-                canvas.msRequestPointerLock ||
-                canvas.mozRequestPointerLock ||
-                canvas.webkitRequestPointerLock;
-    req && req.call(canvas);
-    canvas.focus();
-  });
- 
-  // --- Lighting ------------------------------------------------------------
-  // Soft ambient light from above.
-  const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.6;
- 
-  // Directional sun/moon light for dynamic shadows.
-  const dir = new BABYLON.DirectionalLight(
-    "dir",
-    new BABYLON.Vector3(-0.5, -1.0, -0.3), // direction it points *towards*
-    scene
-  );
-  dir.position = new BABYLON.Vector3(10, 18, 10);
-  dir.intensity = 1.0;
- 
-  // Real-time shadows
-  const shadowGen = new BABYLON.ShadowGenerator(2048, dir);
-  shadowGen.useExponentialShadowMap = true;
- 
-  // --- Skybox --------------------------------------------------------------
-  // Simple emissive skybox (solid color). Replace with a cubemap later if desired.
-  const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000 }, scene);
-  const skyMat = new BABYLON.StandardMaterial("skyMat", scene);
-  skyMat.backFaceCulling = false;
-  skyMat.disableLighting = true;
-  skyMat.diffuseColor = new BABYLON.Color3(0, 0, 0);
-  skyMat.specularColor = new BABYLON.Color3(0, 0, 0);
-  skyMat.emissiveColor = new BABYLON.Color3(0.02, 0.03, 0.05);
-  skybox.material = skyMat;
-  skybox.infiniteDistance = true;
- 
-  // --- Ground --------------------------------------------------------------
-  const ground = BABYLON.MeshBuilder.CreateGround(
-    "ground",
-    { width: 120, height: 120, subdivisions: 32 },
-    scene
-  );
-  const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-  groundMat.diffuseColor = new BABYLON.Color3(0.25, 0.25, 0.28);
-  ground.material = groundMat;
-  ground.checkCollisions = true;   // collide with camera
-  ground.receiveShadows = true;
- 
-  // --- Perimeter walls -----------------------------------------------------
-  const makeWall = (w, h, d, x, y, z, rotY = 0) => {
-    const wall = BABYLON.MeshBuilder.CreateBox("wall", { width: w, height: h, depth: d }, scene);
-    wall.position.set(x, y, z);
-    wall.rotation.y = rotY;
-    wall.checkCollisions = true;
-    wall.receiveShadows = true;
- 
-    const mat = new BABYLON.StandardMaterial("wallMat", scene);
-    mat.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.55);
-    wall.material = mat;
- 
-    shadowGen.addShadowCaster(wall);
-    return wall;
+// Wait until the HTML page is fully loaded
+window.addEventListener("DOMContentLoaded", function () {
+  // Grab the canvas and the info panel from index.html
+  const canvas = document.getElementById("renderCanvas");
+  const infoPanel = document.getElementById("infoPanel");
+
+  // Create Babylon engine (handles WebGL + rendering)
+  const engine = new BABYLON.Engine(canvas, true);
+
+  // This function builds and returns our 3D scene
+  const createScene = function () {
+    const scene = new BABYLON.Scene(engine);
+
+    // Background colour (dark blue-ish)
+    scene.clearColor = new BABYLON.Color3(0.06, 0.08, 0.12);
+
+    // === CAMERA ============================================================
+    // ArcRotateCamera = orbit camera (mouse to rotate, wheel to zoom)
+    const camera = new BABYLON.ArcRotateCamera(
+      "camera",
+      BABYLON.Tools.ToRadians(135), // alpha (horizontal angle)
+      BABYLON.Tools.ToRadians(60), // beta (vertical angle)
+      20, // radius (distance from target)
+      new BABYLON.Vector3(0, 1, 0), // target to look at (x, y, z)
+      scene
+    );
+
+    // Attach mouse control to the canvas
+    camera.attachControl(canvas, true);
+
+    // Limit zoom so you don't go inside the ground accidentally
+    camera.lowerRadiusLimit = 5;
+    camera.upperRadiusLimit = 40;
+
+    // === LIGHTING ==========================================================
+    // Soft ambient light from above
+    const hemiLight = new BABYLON.HemisphericLight(
+      "hemiLight",
+      new BABYLON.Vector3(0, 1, 0),
+      scene
+    );
+    hemiLight.intensity = 0.7;
+
+    // Directional light for shadows (like a sun)
+    const dirLight = new BABYLON.DirectionalLight(
+      "dirLight",
+      new BABYLON.Vector3(-1, -2, -1),
+      scene
+    );
+    dirLight.position = new BABYLON.Vector3(20, 40, 20);
+    dirLight.intensity = 0.9;
+
+    // Create a ShadowGenerator so meshes can cast shadows
+    const shadowGenerator = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadowGenerator.useExponentialShadowMap = true;
+
+    // === GROUND ============================================================
+    const ground = BABYLON.MeshBuilder.CreateGround(
+      "ground",
+      { width: 30, height: 30 },
+      scene
+    );
+
+    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+    groundMat.diffuseColor = new BABYLON.Color3(0.18, 0.2, 0.25);
+    ground.material = groundMat;
+    ground.receiveShadows = true;
+
+    // === INTERACTIVE OBJECTS ==============================================
+    // We’ll store them in a list so we can rotate them each frame
+    const interactiveMeshes = [];
+
+    /**
+     * Helper function to create an interactive mesh.
+     * - meshBuilder: which MeshBuilder function to use (CreateBox, CreateSphere, ...)
+     * - params: options object for that builder
+     * - position: BABYLON.Vector3 for placement
+     * - color: initial colour
+     * - label: name shown in the info panel when clicked
+     */
+    function createInteractiveShape({ name, meshBuilder, params, position, color, label }) {
+      // Create the mesh
+      const mesh = meshBuilder(name, params, scene);
+      mesh.position = position;
+
+      // Give it a simple coloured material
+      const mat = new BABYLON.StandardMaterial(name + "Mat", scene);
+      mat.diffuseColor = color;
+      mesh.material = mat;
+
+      // Allow the mesh to cast a shadow
+      shadowGenerator.addShadowCaster(mesh);
+
+      // Mark mesh as interactive: change colour + update text when clicked
+      mesh.actionManager = new BABYLON.ActionManager(scene);
+      mesh.actionManager.registerAction(
+        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function () {
+          // Random new colour
+          const r = Math.random();
+          const g = Math.random();
+          const b = Math.random();
+          mesh.material.diffuseColor = new BABYLON.Color3(r, g, b);
+
+          // Update the info text
+          infoPanel.textContent = `You clicked the ${label}. Its colour changed!`;
+        })
+      );
+
+      // Add mesh to list so we can animate it
+      interactiveMeshes.push(mesh);
+
+      return mesh;
+    }
+
+    // --- Create 5 different interactive objects ---------------------------
+
+    // 1) Box
+    createInteractiveShape({
+      name: "box",
+      meshBuilder: BABYLON.MeshBuilder.CreateBox,
+      params: { size: 2 },
+      position: new BABYLON.Vector3(-6, 1, 0),
+      color: new BABYLON.Color3(0.9, 0.4, 0.4),
+      label: "Box",
+    });
+
+    // 2) Sphere
+    createInteractiveShape({
+      name: "sphere",
+      meshBuilder: BABYLON.MeshBuilder.CreateSphere,
+      params: { diameter: 2 },
+      position: new BABYLON.Vector3(-3, 1, 5),
+      color: new BABYLON.Color3(0.4, 0.7, 1.0),
+      label: "Sphere",
+    });
+
+    // 3) Cylinder
+    createInteractiveShape({
+      name: "cylinder",
+      meshBuilder: BABYLON.MeshBuilder.CreateCylinder,
+      params: { diameter: 2, height: 2.5 },
+      position: new BABYLON.Vector3(0, 1.25, 0),
+      color: new BABYLON.Color3(0.6, 0.9, 0.5),
+      label: "Cylinder",
+    });
+
+    // 4) Torus (donut)
+    createInteractiveShape({
+      name: "torus",
+      meshBuilder: BABYLON.MeshBuilder.CreateTorus,
+      params: { diameter: 3, thickness: 0.6, tessellation: 32 },
+      position: new BABYLON.Vector3(3.5, 1.2, -4),
+      color: new BABYLON.Color3(0.95, 0.8, 0.5),
+      label: "Torus",
+    });
+
+    // 5) Cone (cylinder where topRadius = 0)
+    createInteractiveShape({
+      name: "cone",
+      meshBuilder: BABYLON.MeshBuilder.CreateCylinder,
+      params: { diameterTop: 0, diameterBottom: 2, height: 3, tessellation: 24 },
+      position: new BABYLON.Vector3(6, 1.5, 2),
+      color: new BABYLON.Color3(0.8, 0.5, 0.9),
+      label: "Cone",
+    });
+
+    // === SIMPLE ANIMATION (rotate all interactive meshes) =================
+    scene.registerBeforeRender(function () {
+      const delta = scene.getEngine().getDeltaTime() * 0.001; // seconds since last frame
+      const speed = 0.8; // rotation speed
+
+      interactiveMeshes.forEach(function (mesh) {
+        mesh.rotation.y += speed * delta;
+      });
+    });
+
+    // Initial message
+    infoPanel.textContent = "Use the mouse to rotate/zoom. Click any shape to interact with it.";
+
+    return scene;
   };
- 
-  // A simple 40x40 "arena"
-  makeWall(2, 4, 40, -20, 2, 0);
-  makeWall(2, 4, 40,  20, 2, 0);
-  makeWall(40, 4, 2,   0, 2, 20);
-  makeWall(40, 4, 2,   0, 2, -20);
- 
-  // --- Obstacles -----------------------------------------------------------
-  // A few boxes to cast shadows and break up sight lines
-  for (let i = 0; i < 12; i++) {
-    const box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
-    box.position = new BABYLON.Vector3(-10 + i * 2, 1, -10 + (i % 3) * 4);
-    box.checkCollisions = true;
-    shadowGen.addShadowCaster(box);
-  }
- 
-  // A small ramp to test collisions while moving/jumping
-  const ramp = BABYLON.MeshBuilder.CreateGround("ramp", { width: 6, height: 12 }, scene);
-  ramp.rotation.x = BABYLON.Tools.ToRadians(20);
-  ramp.position = new BABYLON.Vector3(0, 0.2, -8);
-  ramp.checkCollisions = true;
- 
-  // --- Simple Jump Logic ---------------------------------------------------
-  // Babylon's Free/UniversalCamera uses collisions + applyGravity, but you'll
-  // often add your own jump impulse. This is a tiny vertical velocity integrator.
-  let canJump = true;   // when true, SPACE will inject a jump impulse
-  let verticalVel = 0;  // integration state
-  const JUMP_FORCE = 0.18; // try 0.12–0.25 to taste
-  const G = -0.008;       // small gravitational acceleration per frame
- 
-  window.addEventListener("keydown", (ev) => {
-    if ((ev.code === "Space" || ev.keyCode === 32) && canJump) {
-      verticalVel = JUMP_FORCE; // jump impulse
-      canJump = false;
-    }
+
+  // Create the scene
+  const scene = createScene();
+
+  // Tell Babylon to render the scene repeatedly
+  engine.runRenderLoop(function () {
+    scene.render();
   });
- 
-  // Before each frame renders, apply jump/gravity and check if grounded
-  scene.onBeforeRenderObservable.add(() => {
-    // Raycast straight down from camera to see if we're near ground/ramp
-    const ray = new BABYLON.Ray(camera.position, new BABYLON.Vector3(0, -1, 0), 1.2);
-    const pick = scene.pickWithRay(ray, (m) => m === ground || m.name.includes("ramp"));
- 
-    if (pick?.hit && verticalVel <= 0) {
-      // We hit the ground while falling or standing still: reset jump
-      canJump = true;
-      verticalVel = 0;
-    } else {
-      // In the air: integrate velocity, then apply to camera
-      verticalVel += G;
-      camera.cameraDirection.y += verticalVel;
-    }
+
+  // Handle browser / window resizing
+  window.addEventListener("resize", function () {
+    engine.resize();
   });
- 
-  // --- Basic UI (crosshair + help) ----------------------------------------
-  const ui = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("HUD");
- 
-  // Crosshair
-  const cross = new BABYLON.GUI.Ellipse();
-  cross.width = "8px";
-  cross.height = "8px";
-  cross.thickness = 2;
-  cross.color = "white";
-  cross.background = "transparent";
-  ui.addControl(cross);
- 
-  // On‑screen controls hint
-  const help = new BABYLON.GUI.TextBlock();
-  help.text = "WASD to move • Mouse to look • Click to lock • Space to jump";
-  help.color = "white";
-  help.fontSize = 14;
-  help.alpha = 0.7;
-  help.top = "-48%"; // near top edge
-  ui.addControl(help);
- 
-  // Example: load a GLB model later (drop into /assets and uncomment):
-  // BABYLON.SceneLoader.ImportMesh(
-  //   "", "./assets/", "myModel.glb", scene,
-  //   (meshes) => {
-  //     meshes.forEach(m => {
-  //       m.checkCollisions = true;
-  //       shadowGen.addShadowCaster(m);
-  //     });
-  //   }
-  // );
- 
-  return scene;
-};
- 
-// Create the scene and start the render loop
-const scene = createScene();
-engine.runRenderLoop(() => scene.render());
- 
-// Resize the engine on window resize
-window.addEventListener("resize", () => engine.resize());
- 
+});
