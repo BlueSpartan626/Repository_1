@@ -1,0 +1,98 @@
+/* general reset + base styling */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #05070c;
+  color: #f3f3f3;
+}
+
+a {
+  color: #93c5fd;
+}
+
+a:hover {
+  color: #bfdbfe;
+}
+
+/* navbar */
+.navbar-custom {
+  background: #111827;
+}
+
+.navbar-brand,
+.nav-link {
+  color: #e5e7eb !important;
+}
+
+.nav-link.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* layout wrappers */
+.main-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 1rem;
+}
+
+/* full-window canvas wrapper for scenes */
+.canvas-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+}
+
+/* Babylon canvas */
+#renderCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* overlay UI text on top of scenes */
+.scene-ui {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* cards for home/docs text blocks */
+.card {
+  background: #111827;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+.card h5 {
+  color: #e5e7eb;
+}
+
+/* inline code formatting for docs */
+.code-inline {
+  font-family: Consolas, "Courier New", monospace;
+  background: #020617;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.2rem;
+}
