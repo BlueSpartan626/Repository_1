@@ -1,5 +1,5 @@
-// Scene 2 – environment.
-// Idea: load a GLB env (castle.glb) and walk around it FPS-style.
+// Scene 2 – environment focused on the Leartes castle.
+// Idea: castle is the main star, I just add camera, lights, fog, a bit of post-process and ambience.
 
 const s2 = setupEngineAndCanvas();
 const canvas2 = s2.canvas;
@@ -11,7 +11,7 @@ async function createScene2() {
   scene.collisionsEnabled = true;
   scene.gravity = new BABYLON.Vector3(0, -0.5, 0);
 
-  // FPS camera for walking the space
+  // FPS camera for walking the space around the castle
   const camera = new BABYLON.UniversalCamera(
     "cam2",
     new BABYLON.Vector3(0, 2, -6),
@@ -23,45 +23,45 @@ async function createScene2() {
   camera.ellipsoid = new BABYLON.Vector3(0.5, 1.0, 0.5);
   camera.checkCollisions = true;
   camera.applyGravity = true;
-  camera.keysUp.push(87); // W
+  camera.keysUp.push(87);  // W
   camera.keysDown.push(83); // S
   camera.keysLeft.push(65); // A
   camera.keysRight.push(68); // D
   camera.attachControl(canvas2, true);
 
-  // lights for general ambience + direction
+  // main lighting – enough to see the castle but not wash out baked detail
   const hemi = new BABYLON.HemisphericLight("hemi2", new BABYLON.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.6;
+  hemi.intensity = 0.5;
 
   const dir = new BABYLON.DirectionalLight("dir2", new BABYLON.Vector3(-0.4, -1, -0.3), scene);
   dir.position = new BABYLON.Vector3(25, 50, 25);
-  dir.intensity = 0.9;
+  dir.intensity = 0.8;
 
   const shadowGen = new BABYLON.ShadowGenerator(1024, dir);
   shadowGen.useExponentialShadowMap = true;
 
-  // skybox so we’re not staring at default grey
+  // soft sky background so the castle isn't floating in pure void
   const skybox = BABYLON.MeshBuilder.CreateBox("skybox2", { size: 2000 }, scene);
   const skyMat = new BABYLON.StandardMaterial("skyMat2", scene);
   skyMat.backFaceCulling = false;
   skyMat.disableLighting = true;
-  skyMat.emissiveColor = new BABYLON.Color3(0.02, 0.03, 0.05);
+  skyMat.emissiveColor = new BABYLON.Color3(0.02, 0.03, 0.06);
   skybox.material = skyMat;
   skybox.infiniteDistance = true;
 
-  // ground fallback – in case the GLB is floating
+  // simple fallback ground, in case the castle has gaps
   const ground = BABYLON.MeshBuilder.CreateGround(
     "ground2",
-    { width: 200, height: 200 },
+    { width: 400, height: 400 },
     scene
   );
   const groundMat = new BABYLON.StandardMaterial("ground2Mat", scene);
-  groundMat.diffuseColor = new BABYLON.Color3(0.15, 0.18, 0.2);
+  groundMat.diffuseColor = new BABYLON.Color3(0.12, 0.14, 0.17);
   ground.material = groundMat;
   ground.checkCollisions = true;
   ground.receiveShadows = true;
 
-  // ambient audio placeholder – uses audio_wind.mp3 when I have it
+  // ambient audio placeholder – uses audio_wind.mp3 once I drop it into /assets
   const envSound = new BABYLON.Sound(
     "envWind",
     "assets/audio_wind.mp3",
@@ -74,12 +74,12 @@ async function createScene2() {
     }
   );
 
-  // import the castle or whatever env I end up using
+  // import the castle environment (main star of this scene)
   await new Promise((resolve, reject) => {
     BABYLON.SceneLoader.ImportMesh(
       "",
       "assets/",
-      "castle.glb", // replace name if my GLB ends up different
+      "castle.glb", // exported from Blender into /assets
       scene,
       (meshes) => {
         meshes.forEach((m) => {
@@ -88,7 +88,7 @@ async function createScene2() {
           shadowGen.addShadowCaster(m, true);
         });
 
-        // auto-place camera near the scene so I don't spawn inside a wall
+        // auto-place camera looking at the castle bounds
         let min = new BABYLON.Vector3(+Infinity, +Infinity, +Infinity);
         let max = new BABYLON.Vector3(-Infinity, -Infinity, -Infinity);
 
@@ -100,10 +100,12 @@ async function createScene2() {
 
         const center = min.add(max).scale(0.5);
         const size = max.subtract(min);
+
         camera.position = center.add(
-          new BABYLON.Vector3(0, Math.max(3, size.y * 0.2), -Math.max(8, size.z * 0.3))
+          new BABYLON.Vector3(0, Math.max(3, size.y * 0.25), -Math.max(12, size.z * 0.4))
         );
         camera.setTarget(center);
+
         resolve();
       },
       null,
@@ -111,7 +113,7 @@ async function createScene2() {
     );
   });
 
-  // jump logic – reused idea from other scene
+  // jump logic so I can hop around the environment a bit
   let canJump = true;
   let vy = 0;
   const JUMP_FORCE = 0.18;
@@ -125,7 +127,7 @@ async function createScene2() {
   });
 
   scene.onBeforeRenderObservable.add(() => {
-    const ray = new BABYLON.Ray(camera.position, new BABYLON.Vector3(0, -1, 0), 1.2);
+    const ray = new BABYLON.Ray(camera.position, new BABYLON.Vector3(0, -1, 0), 1.3);
     const pick = scene.pickWithRay(ray, (m) => m.checkCollisions && m !== skybox);
 
     if (pick?.hit && vy <= 0) {
@@ -137,10 +139,22 @@ async function createScene2() {
     }
   });
 
-  // fog for depth / mood
+  // fog gives atmosphere & depth for the castle
   scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
   scene.fogDensity = 0.003;
   scene.fogColor = new BABYLON.Color3(0.02, 0.03, 0.05);
+
+  // small post-process pipeline so it feels more like a game
+  const pipeline = new BABYLON.DefaultRenderingPipeline(
+    "defaultPipeline",
+    true,
+    scene,
+    [camera]
+  );
+  pipeline.bloomEnabled = true;
+  pipeline.bloomThreshold = 0.9;
+  pipeline.bloomWeight = 0.4;
+  pipeline.bloomKernel = 16;
 
   return scene;
 }
