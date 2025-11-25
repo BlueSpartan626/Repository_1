@@ -1,260 +1,253 @@
-// Scene 1 – basic shapes, light, shadows, motion + click interactions.
-// This is basically my "playground" room where I mess with simple behaviours.
+// assets/js/scene1.js
+// Scene 1 – Shapes: basic meshes, textures, lighting, shadows + 5 different interactions.
 
-const { canvas, engine } = setupEngineAndCanvas();
+window.createScene1 = function (engine) {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.02, 0.02, 0.04, 1.0);
 
-function createScene1() {
-  const scene = new BABYLON.Scene(engine);
-  scene.clearColor = new BABYLON.Color4(0.03, 0.04, 0.07, 1);
-
-  // orbit cam so I can spin around the shapes
-  const camera = new BABYLON.ArcRotateCamera(
-    "cam1",
-    BABYLON.Tools.ToRadians(135),
-    BABYLON.Tools.ToRadians(60),
-    20,
-    new BABYLON.Vector3(0, 1, 0),
-    scene
-  );
-  camera.attachControl(canvas, true);
-
-  // basic lights – one ambient and one directional for shadows
-  const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.6;
-
-  const dir = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(-1, -2, -1), scene);
-  dir.position = new BABYLON.Vector3(10, 20, 10);
-  dir.intensity = 0.9;
-
-  const shadowGen = new BABYLON.ShadowGenerator(1024, dir);
-  shadowGen.useExponentialShadowMap = true;
-
-  // ground to catch shadows
-  const ground = BABYLON.MeshBuilder.CreateGround(
-    "ground",
-    { width: 30, height: 30 },
-    scene
-  );
-  const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-  groundMat.diffuseColor = new BABYLON.Color3(0.15, 0.17, 0.2);
-  ground.material = groundMat;
-  ground.receiveShadows = true;
-
-  // --- SHAPES ---
-
-  const box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
-  box.position = new BABYLON.Vector3(-5, 1, 0);
-
-  const sphere = BABYLON.MeshBuilder.CreateSphere(
-    "sphere",
-    { diameter: 2, segments: 24 },
-    scene
-  );
-  sphere.position = new BABYLON.Vector3(0, 1, 3);
-
-  const cylinder = BABYLON.MeshBuilder.CreateCylinder(
-    "cyl",
-    { diameter: 2, height: 3, tessellation: 32 },
-    scene
-  );
-  cylinder.position = new BABYLON.Vector3(4, 1.5, -2);
-
-  const torus = BABYLON.MeshBuilder.CreateTorus(
-    "torus",
-    { diameter: 3, thickness: 0.5, tessellation: 64 },
-    scene
-  );
-  torus.position = new BABYLON.Vector3(-1, 2, -4);
-
-  const plane = BABYLON.MeshBuilder.CreatePlane(
-    "plane",
-    { size: 3 },
-    scene
-  );
-  plane.position = new BABYLON.Vector3(6, 2, 3);
-  plane.rotation.y = BABYLON.Tools.ToRadians(30);
-
-  // --- MATERIALS ---
-
-  const boxMat = new BABYLON.StandardMaterial("matBox", scene);
-  boxMat.diffuseColor = new BABYLON.Color3(0.9, 0.4, 0.4);
-  box.material = boxMat;
-
-  const sphereMat = new BABYLON.StandardMaterial("matSphere", scene);
-  sphereMat.diffuseColor = new BABYLON.Color3(0.4, 0.7, 1);
-  sphereMat.specularColor = new BABYLON.Color3(0.9, 0.9, 1);
-  sphere.material = sphereMat;
-
-  const cylMat = new BABYLON.StandardMaterial("matCyl", scene);
-  cylMat.diffuseColor = new BABYLON.Color3(0.5, 0.9, 0.6);
-  cylinder.material = cylMat;
-
-  const torusMat = new BABYLON.StandardMaterial("matTorus", scene);
-  torusMat.emissiveColor = new BABYLON.Color3(0.9, 0.8, 0.3); // fake glow
-  torus.material = torusMat;
-
-  const planeMat = new BABYLON.StandardMaterial("matPlane", scene);
-  // important: show the plane from both sides so it never vanishes when viewed from behind
-  planeMat.backFaceCulling = false;
-  planeMat.diffuseTexture = new BABYLON.Texture(
-    "https://playground.babylonjs.com/textures/floor.png",
-    scene
-  );
-  plane.material = planeMat;
-
-  const meshes = [box, sphere, cylinder, torus, plane];
-  meshes.forEach((m) => shadowGen.addShadowCaster(m));
-
-  // --- INTERACTION STATE ---
-  // I just keep some flags per shape so I can flip behaviours on click.
-
-  const shapeState = {
-    box: {
-      fastSpin: false,
-    },
-    sphere: {
-      pulse: false,
-      baseScale: sphere.scaling.clone(),
-    },
-    cylinder: {
-      bounceTimer: 0, // counts down when I trigger a bounce
-    },
-    torus: {
-      crazySpin: false,
-    },
-    plane: {
-      flipped: false,
-    },
-  };
-
-  // helper to randomise a colour
-  function randomColor3() {
-    return new BABYLON.Color3(
-      0.3 + Math.random() * 0.7,
-      0.3 + Math.random() * 0.7,
-      0.3 + Math.random() * 0.7
+    // --- Camera ---
+    // Orbit camera so I can spin around the shapes without any FPS pointer-lock nonsense.
+    const camera = new BABYLON.ArcRotateCamera(
+        "scene1Camera",
+        -Math.PI / 2,
+        Math.PI / 3,
+        25,
+        new BABYLON.Vector3(0, 1, 0),
+        scene
     );
-  }
+    camera.attachControl(true);
+    camera.lowerRadiusLimit = 10;
+    camera.upperRadiusLimit = 40;
 
-  // what happens when I click each shape
-  function handleShapeClick(mesh) {
-    switch (mesh.name) {
-      // BOX – toggles between chill rotation and hyper spin + random colour
-      case "box": {
-        const state = shapeState.box;
-        state.fastSpin = !state.fastSpin;
-        if (state.fastSpin) {
-          boxMat.diffuseColor = randomColor3();
-        } else {
-          boxMat.diffuseColor = new BABYLON.Color3(0.9, 0.4, 0.4);
+    // --- Lights ---
+    // Hemi = soft global light so nothing is totally black.
+    const hemiLight = new BABYLON.HemisphericLight(
+        "hemiLight",
+        new BABYLON.Vector3(0, 1, 0),
+        scene
+    );
+    hemiLight.intensity = 0.6;
+
+    // Directional = fake sun for actual shadows.
+    const sun = new BABYLON.DirectionalLight(
+        "sunLight",
+        new BABYLON.Vector3(-0.4, -1, 0.4),
+        scene
+    );
+    sun.intensity = 1.1;
+
+    // Shadow generator so the shapes actually cast shadows on the ground.
+    const shadowGen = new BABYLON.ShadowGenerator(2048, sun);
+    shadowGen.usePoissonSampling = true;
+
+    // --- Ground / floor ---
+    // Using my grass texture here just to prove I can use textures + normal maps.
+    const ground = BABYLON.MeshBuilder.CreateGround(
+        "ground",
+        { width: 40, height: 40, subdivisions: 2 },
+        scene
+    );
+    ground.receiveShadows = true;
+
+    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+    const groundDiffuse = new BABYLON.Texture("assets/ground_diffuse.png", scene);
+    groundDiffuse.uScale = 6;
+    groundDiffuse.vScale = 6;
+    groundMat.diffuseTexture = groundDiffuse;
+
+    const groundNormal = new BABYLON.Texture("assets/ground_normal.png", scene);
+    groundNormal.uScale = 6;
+    groundNormal.vScale = 6;
+    groundMat.bumpTexture = groundNormal;
+
+    groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+    ground.material = groundMat;
+
+    // --- Shapes ---
+    // Box – colour toggle
+    const box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
+    box.position = new BABYLON.Vector3(-6, 1, 0);
+
+    const boxMat = new BABYLON.StandardMaterial("boxMat", scene);
+    boxMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0.2); // red
+    box.material = boxMat;
+
+    // Sphere – bounce animation
+    const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
+    sphere.position = new BABYLON.Vector3(-3, 1, 0);
+
+    const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
+    sphereMat.diffuseColor = new BABYLON.Color3(0.3, 0.8, 1); // cyan-ish
+    sphere.material = sphereMat;
+
+    // Cylinder – toggle spin
+    const cylinder = BABYLON.MeshBuilder.CreateCylinder("cylinder", {
+        height: 2,
+        diameter: 2
+    }, scene);
+    cylinder.position = new BABYLON.Vector3(0, 1, 0);
+
+    const cylinderMat = new BABYLON.StandardMaterial("cylinderMat", scene);
+    cylinderMat.diffuseColor = new BABYLON.Color3(0.4, 1, 0.6); // mint
+    cylinder.material = cylinderMat;
+    cylinder.__spinning = true; // internal toggle
+
+    // Torus – pulse + click sound
+    const torus = BABYLON.MeshBuilder.CreateTorus("torus", {
+        diameter: 3,
+        thickness: 0.6,
+        tessellation: 32
+    }, scene);
+    torus.position = new BABYLON.Vector3(3, 1, 0);
+
+    const torusMat = new BABYLON.StandardMaterial("torusMat", scene);
+    torusMat.diffuseColor = new BABYLON.Color3(1, 0.8, 0.3);
+    torusMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
+    torus.material = torusMat;
+
+    // Cone – toggles spotlight
+    const cone = BABYLON.MeshBuilder.CreateCylinder("cone", {
+        height: 2.5,
+        diameterTop: 0,
+        diameterBottom: 2,
+        tessellation: 32
+    }, scene);
+    cone.position = new BABYLON.Vector3(6, 1.25, 0);
+
+    const coneMat = new BABYLON.StandardMaterial("coneMat", scene);
+    coneMat.diffuseColor = new BABYLON.Color3(0.6, 0.5, 1); // purple
+    cone.material = coneMat;
+
+    // Spotlight that starts off dim and brightens when I click the cone.
+    const spot = new BABYLON.SpotLight(
+        "coneSpot",
+        new BABYLON.Vector3(6, 6, 5),
+        new BABYLON.Vector3(0, -1.3, -0.8),
+        Math.PI / 3,
+        10,
+        scene
+    );
+    spot.intensity = 0.2;
+    spot.diffuse = new BABYLON.Color3(0.8, 0.7, 1.0);
+
+    // Add all meshes (except ground) as shadow casters.
+    [box, sphere, cylinder, torus, cone].forEach(mesh => shadowGen.addShadowCaster(mesh));
+
+    // --- Audio ---
+    // Simple click sound I can reuse for all interactions.
+    const clickSound = new BABYLON.Sound(
+        "click",
+        "assets/audio_click.wav",
+        scene,
+        null,
+        { volume: 0.7 }
+    );
+
+    // --- Animations ---
+    // Sphere bounce – I only create the Animation once and play it on click.
+    const bounceAnim = new BABYLON.Animation(
+        "bounceAnim",
+        "position.y",
+        30,
+        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
+
+    const bounceKeys = [
+        { frame: 0, value: sphere.position.y },
+        { frame: 10, value: sphere.position.y + 2.5 },
+        { frame: 20, value: sphere.position.y }
+    ];
+    bounceAnim.setKeys(bounceKeys);
+    sphere.animations.push(bounceAnim);
+
+    // Torus pulse animation (scales up and back down).
+    const pulseAnim = new BABYLON.Animation(
+        "pulseAnim",
+        "scaling",
+        30,
+        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
+    const baseScale = torus.scaling.clone();
+    const pulseKeys = [
+        { frame: 0, value: baseScale },
+        { frame: 6, value: baseScale.scale(1.2) },
+        { frame: 12, value: baseScale }
+    ];
+    pulseAnim.setKeys(pulseKeys);
+    torus.animations.push(pulseAnim);
+
+    // --- Per-frame updates ---
+    // Cylinder spins when __spinning is true.
+    scene.onBeforeRenderObservable.add(() => {
+        if (cylinder.__spinning) {
+            cylinder.rotation.y += scene.getEngine().getDeltaTime() * 0.0015;
         }
-        break;
-      }
+    });
 
-      // SPHERE – toggles a breathing/pulse effect on scale + colour shift
-      case "sphere": {
-        const state = shapeState.sphere;
-        state.pulse = !state.pulse;
-        if (state.pulse) {
-          sphereMat.diffuseColor = new BABYLON.Color3(0.6, 0.9, 1.0);
-        } else {
-          sphereMat.diffuseColor = new BABYLON.Color3(0.4, 0.7, 1);
-          sphere.scaling.copyFrom(state.baseScale);
+    // --- Interaction logic ---
+    // Helper so I don't spam the sound every millisecond.
+    function playClick() {
+        if (clickSound.isReady()) clickSound.play();
+    }
+
+    scene.onPointerObservable.add((pointerInfo) => {
+        if (pointerInfo.type !== BABYLON.PointerEventTypes.POINTERPICK) return;
+
+        const pick = pointerInfo.pickInfo;
+        if (!pick || !pick.hit || !pick.pickedMesh) return;
+
+        const mesh = pick.pickedMesh;
+
+        // Box: toggle colour.
+        if (mesh === box) {
+            playClick();
+            const c = boxMat.diffuseColor;
+            const isRed = c.r > c.b;
+            if (isRed) {
+                boxMat.diffuseColor = new BABYLON.Color3(0.2, 0.4, 1); // blue
+            } else {
+                boxMat.diffuseColor = new BABYLON.Color3(1, 0.2, 0.2); // back to red
+            }
         }
-        break;
-      }
 
-      // CYLINDER – quick bounce animation whenever I click it
-      case "cyl": {
-        const state = shapeState.cylinder;
-        state.bounceTimer = 0.7; // seconds of bounce time
-        break;
-      }
-
-      // TORUS – each click randomises colour + toggles heavier rotation
-      case "torus": {
-        const state = shapeState.torus;
-        state.crazySpin = !state.crazySpin;
-        torusMat.emissiveColor = randomColor3();
-        break;
-      }
-
-      // PLANE – flips around + switches between textured and flat colour
-      case "plane": {
-        const state = shapeState.plane;
-        state.flipped = !state.flipped;
-
-        if (state.flipped) {
-          plane.rotation.y += Math.PI; // quick flip
-          planeMat.diffuseTexture = null;
-          planeMat.diffuseColor = new BABYLON.Color3(0.3, 0.9, 0.7);
-        } else {
-          plane.rotation.y -= Math.PI;
-          planeMat.diffuseTexture = new BABYLON.Texture(
-            "https://playground.babylonjs.com/textures/floor.png",
-            scene
-          );
-          planeMat.diffuseColor = BABYLON.Color3.White();
+        // Sphere: bounce.
+        if (mesh === sphere) {
+            playClick();
+            scene.beginAnimation(sphere, 0, 20, false);
         }
-        break;
-      }
-    }
-  }
 
-  // click handling – I just pick whatever mesh I click and pass it to the function
-  scene.onPointerObservable.add((pointerInfo) => {
-    if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
-      const pick = pointerInfo.pickInfo;
-      if (pick?.hit && pick.pickedMesh) {
-        handleShapeClick(pick.pickedMesh);
-      }
-    }
-  });
+        // Cylinder: toggle spinning on/off.
+        if (mesh === cylinder) {
+            playClick();
+            cylinder.__spinning = !cylinder.__spinning;
+        }
 
-  // --- PER-FRAME ANIMATION ---
+        // Torus: pulse + emissive flash.
+        if (mesh === torus) {
+            playClick();
+            torusMat.emissiveColor = new BABYLON.Color3(1, 0.9, 0.5);
+            scene.beginAnimation(torus, 0, 12, false, 1.0, () => {
+                torusMat.emissiveColor = new BABYLON.Color3(0, 0, 0);
+            });
+        }
 
-  scene.onBeforeRenderObservable.add(() => {
-    const dt = engine.getDeltaTime() * 0.001; // delta in seconds
-    const t = performance.now() * 0.002;
+        // Cone: toggle spotlight strength.
+        if (mesh === cone) {
+            playClick();
+            const isDim = spot.intensity < 0.3;
+            spot.intensity = isDim ? 1.4 : 0.2;
+        }
+    });
 
-    // BOX – always rotates a bit, faster if fastSpin is on
-    const boxState = shapeState.box;
-    const boxSpeed = boxState.fastSpin ? 3.0 : 0.8;
-    box.rotation.y += boxSpeed * dt;
-
-    // SPHERE – gentle float + optional pulse
-    const sphState = shapeState.sphere;
-    sphere.position.y = 1 + Math.sin(t) * 0.4;
-    if (sphState.pulse) {
-      const pulse = 1 + Math.sin(t * 2.0) * 0.15;
-      sphere.scaling.copyFrom(sphState.baseScale.scale(pulse));
+    // --- HUD text (shared helper from shared.js) ---
+    if (window.updateSceneInfoText) {
+        window.updateSceneInfoText(
+            "Scene 1 – Shapes",
+            "Left click a shape: Box = colour toggle • Sphere = bounce • Cylinder = spin toggle • Torus = pulse + glow • Cone = spotlight toggle"
+        );
     }
 
-    // CYLINDER – rotates a bit and does a bounce when bounceTimer > 0
-    const cylState = shapeState.cylinder;
-    cylinder.rotation.x += 0.4 * dt;
-
-    if (cylState.bounceTimer > 0) {
-      cylState.bounceTimer -= dt;
-      const bouncePhase = Math.max(cylState.bounceTimer, 0);
-      cylinder.position.y = 1.5 + Math.sin(bouncePhase * 15) * 0.6;
-    } else {
-      cylinder.position.y = 1.5;
-    }
-
-    // TORUS – idle rotation + extra spin if crazySpin flag is on
-    const torusState = shapeState.torus;
-    const torusBaseSpeed = -0.6;
-    const torusExtra = torusState.crazySpin ? -2.5 : 0;
-    torus.rotation.y += (torusBaseSpeed + torusExtra) * dt;
-
-    // PLANE – subtle wobble so it's not dead static
-    plane.rotation.z += 0.3 * dt;
-  });
-
-  return scene;
-}
-
-const scene1 = createScene1();
-engine.runRenderLoop(() => scene1.render());
-window.addEventListener("resize", () => engine.resize());
+    return scene;
+};
