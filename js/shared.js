@@ -7,15 +7,9 @@ function setupEngineAndCanvas() {
     stencil: true,
   });
 
-  // pointer lock on click (matters most for FPS scenes, harmless elsewhere)
+  // Just focus the canvas on click – NO pointer lock.
+  // This means I keep my mouse and can still click shapes/UI without pressing Esc.
   canvas.addEventListener("click", () => {
-    const req =
-      canvas.requestPointerLock ||
-      canvas.msRequestPointerLock ||
-      canvas.mozRequestPointerLock ||
-      canvas.webkitRequestPointerLock;
-
-    if (req) req.call(canvas);
     canvas.focus();
   });
 

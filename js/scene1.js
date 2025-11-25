@@ -94,6 +94,8 @@ function createScene1() {
   torus.material = torusMat;
 
   const planeMat = new BABYLON.StandardMaterial("matPlane", scene);
+  // important: show the plane from both sides so it never vanishes when viewed from behind
+  planeMat.backFaceCulling = false;
   planeMat.diffuseTexture = new BABYLON.Texture(
     "https://playground.babylonjs.com/textures/floor.png",
     scene
