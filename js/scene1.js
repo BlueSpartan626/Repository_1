@@ -1,208 +1,342 @@
-// assets/js/scene1.js
-// Scene 1 – stripped down: shapes, lights, 5 unique interactions, no textures/audio.
-// Once this works, we can re-add textures & sounds.
-
-window.createScene1 = function (engine) {
-    const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.15, 0.18, 0.25, 1.0);
-
-    // --- Camera ---
-    const camera = new BABYLON.ArcRotateCamera(
-        "scene1Camera",
-        -Math.PI / 2,
-        Math.PI / 3,
-        25,
-        new BABYLON.Vector3(0, 1, 0),
-        scene
-    );
-    camera.attachControl(true);
-    camera.lowerRadiusLimit = 10;
-    camera.upperRadiusLimit = 40;
-
-    // --- Lights ---
-    const hemiLight = new BABYLON.HemisphericLight(
-        "hemiLight",
-        new BABYLON.Vector3(0, 1, 0),
-        scene
-    );
-    hemiLight.intensity = 0.9;
-
-    const sun = new BABYLON.DirectionalLight(
-        "sunLight",
-        new BABYLON.Vector3(-0.4, -1, 0.4),
-        scene
-    );
-    sun.intensity = 0.8;
-
-    const shadowGen = new BABYLON.ShadowGenerator(1024, sun);
-    shadowGen.usePoissonSampling = true;
-
-    // --- Ground ---
-    const ground = BABYLON.MeshBuilder.CreateGround(
-        "ground",
-        { width: 40, height: 40, subdivisions: 2 },
-        scene
-    );
-    ground.receiveShadows = true;
-
-    const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-    groundMat.diffuseColor = new BABYLON.Color3(0.18, 0.22, 0.18); // muted green
-    groundMat.specularColor = new BABYLON.Color3(0.0, 0.0, 0.0);
-    ground.material = groundMat;
-
-    // --- Shapes (5 different ones) ---
-
-    // Box – colour toggle
-    const box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
-    box.position = new BABYLON.Vector3(-6, 1, 0);
-    const boxMat = new BABYLON.StandardMaterial("boxMat", scene);
-    boxMat.diffuseColor = new BABYLON.Color3(1, 0.3, 0.3); // red
-    box.material = boxMat;
-
-    // Sphere – bounce animation
-    const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
-    sphere.position = new BABYLON.Vector3(-3, 1, 0);
-    const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
-    sphereMat.diffuseColor = new BABYLON.Color3(0.4, 0.9, 1.0); // cyan
-    sphere.material = sphereMat;
-
-    // Cylinder – spin toggle
-    const cylinder = BABYLON.MeshBuilder.CreateCylinder("cylinder", {
-        height: 2,
-        diameter: 2
-    }, scene);
-    cylinder.position = new BABYLON.Vector3(0, 1, 0);
-    const cylinderMat = new BABYLON.StandardMaterial("cylinderMat", scene);
-    cylinderMat.diffuseColor = new BABYLON.Color3(0.4, 1, 0.6); // mint
-    cylinder.material = cylinderMat;
-    cylinder.__spinning = true;
-
-    // Torus – pulse scale
-    const torus = BABYLON.MeshBuilder.CreateTorus("torus", {
-        diameter: 3,
-        thickness: 0.6,
-        tessellation: 32
-    }, scene);
-    torus.position = new BABYLON.Vector3(3, 1, 0);
-    const torusMat = new BABYLON.StandardMaterial("torusMat", scene);
-    torusMat.diffuseColor = new BABYLON.Color3(1, 0.85, 0.5); // warm yellow
-    torus.material = torusMat;
-
-    // Cone – toggles spotlight
-    const cone = BABYLON.MeshBuilder.CreateCylinder("cone", {
-        height: 2.5,
-        diameterTop: 0,
-        diameterBottom: 2,
-        tessellation: 32
-    }, scene);
-    cone.position = new BABYLON.Vector3(6, 1.25, 0);
-    const coneMat = new BABYLON.StandardMaterial("coneMat", scene);
-    coneMat.diffuseColor = new BABYLON.Color3(0.7, 0.6, 1.0); // soft purple
-    cone.material = coneMat;
-
-    const spot = new BABYLON.SpotLight(
-        "coneSpot",
-        new BABYLON.Vector3(6, 6, 5),
-        new BABYLON.Vector3(0, -1.3, -0.8),
-        Math.PI / 3,
-        10,
-        scene
-    );
-    spot.intensity = 0.3;
-    spot.diffuse = new BABYLON.Color3(0.9, 0.8, 1.0);
-
-    // Shadows from all shapes
-    [box, sphere, cylinder, torus, cone].forEach(mesh => shadowGen.addShadowCaster(mesh));
-
-    // --- Animations ---
-
-    // Sphere bounce
-    const bounceAnim = new BABYLON.Animation(
-        "bounceAnim",
-        "position.y",
-        30,
-        BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-    );
-    const bounceKeys = [
-        { frame: 0, value: sphere.position.y },
-        { frame: 10, value: sphere.position.y + 2.5 },
-        { frame: 20, value: sphere.position.y }
-    ];
-    bounceAnim.setKeys(bounceKeys);
-    sphere.animations.push(bounceAnim);
-
-    // Torus pulse (scale up/down)
-    const pulseAnim = new BABYLON.Animation(
-        "pulseAnim",
-        "scaling",
-        30,
-        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-    );
-    const baseScale = torus.scaling.clone();
-    const pulseKeys = [
-        { frame: 0, value: baseScale },
-        { frame: 6, value: baseScale.scale(1.25) },
-        { frame: 12, value: baseScale }
-    ];
-    pulseAnim.setKeys(pulseKeys);
-    torus.animations.push(pulseAnim);
-
-    // Cylinder spin per frame
-    scene.onBeforeRenderObservable.add(() => {
-        if (cylinder.__spinning) {
-            const dt = scene.getEngine().getDeltaTime();
-            cylinder.rotation.y += dt * 0.002;
-        }
-    });
-
-    // --- Click interactions ---
-    scene.onPointerObservable.add((pointerInfo) => {
-        if (pointerInfo.type !== BABYLON.PointerEventTypes.POINTERPICK) return;
-        const pick = pointerInfo.pickInfo;
-        if (!pick || !pick.hit || !pick.pickedMesh) return;
-
-        const mesh = pick.pickedMesh;
-
-        // Box: toggle colour red <-> blue
-        if (mesh === box) {
-            const c = boxMat.diffuseColor;
-            const isRed = c.r > c.b;
-            boxMat.diffuseColor = isRed
-                ? new BABYLON.Color3(0.3, 0.5, 1.0)
-                : new BABYLON.Color3(1, 0.3, 0.3);
-        }
-
-        // Sphere: bounce
-        if (mesh === sphere) {
-            scene.beginAnimation(sphere, 0, 20, false);
-        }
-
-        // Cylinder: toggle spinning
-        if (mesh === cylinder) {
-            cylinder.__spinning = !cylinder.__spinning;
-        }
-
-        // Torus: pulse scale
-        if (mesh === torus) {
-            scene.beginAnimation(torus, 0, 12, false);
-        }
-
-        // Cone: toggle spotlight intensity
-        if (mesh === cone) {
-            const isDim = spot.intensity < 0.5;
-            spot.intensity = isDim ? 1.4 : 0.3;
-        }
-    });
-
-    // --- HUD text (if shared.js exists) ---
-    if (window.updateSceneInfoText) {
-        window.updateSceneInfoText(
-            "Scene 1 – Shapes",
-            "Click: Box = colour • Sphere = bounce • Cylinder = spin toggle • Torus = pulse • Cone = spotlight toggle."
-        );
+// js/scene1.js
+window.addEventListener("DOMContentLoaded", () => {
+    const canvas = document.getElementById("renderCanvas");
+    if (!canvas) {
+        console.error("Canvas with id 'renderCanvas' not found");
+        return;
     }
 
-    return scene;
-};
+    const engine = new BABYLON.Engine(canvas, true, { audioEngine: true }, true);
+
+    const createScene = () => {
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color4(0.12, 0.15, 0.22, 1.0);
+
+        // Camera
+        const camera = new BABYLON.ArcRotateCamera(
+            "scene1Camera",
+            -Math.PI / 2.3,
+            Math.PI / 3,
+            35,
+            new BABYLON.Vector3(0, 8, 0),
+            scene
+        );
+        camera.attachControl(canvas, true);
+        camera.lowerRadiusLimit = 15;
+        camera.upperRadiusLimit = 60;
+        camera.lowerBetaLimit   = 0.35;
+        camera.upperBetaLimit   = Math.PI / 2.1;
+
+        // Lights
+        const hemiLight = new BABYLON.HemisphericLight(
+            "hemiLight",
+            new BABYLON.Vector3(0, 1, 0),
+            scene
+        );
+        hemiLight.intensity = 0.5;
+        hemiLight.groundColor = new BABYLON.Color3(0.05, 0.06, 0.08);
+
+        const sun = new BABYLON.DirectionalLight(
+            "sunLight",
+            new BABYLON.Vector3(-0.6, -1, 0.4),
+            scene
+        );
+        sun.position = new BABYLON.Vector3(40, 60, -40);
+        sun.intensity = 0.9;
+
+        const shadowGen = new BABYLON.ShadowGenerator(2048, sun);
+        shadowGen.useExponentialShadowMap = true;
+
+        // Ground
+        const ground = BABYLON.MeshBuilder.CreateGround(
+            "ground",
+            { width: 60, height: 60, subdivisions: 4 },
+            scene
+        );
+        const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
+        groundMat.diffuseTexture = new BABYLON.Texture("../assets/ground_diffuse.png", scene);
+        groundMat.bumpTexture   = new BABYLON.Texture("../assets/ground_normal.png", scene);
+        groundMat.diffuseTexture.uScale = 5;
+        groundMat.diffuseTexture.vScale = 5;
+        groundMat.bumpTexture.uScale    = 5;
+        groundMat.bumpTexture.vScale    = 5;
+        groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        ground.material = groundMat;
+        ground.receiveShadows = true;
+        ground.__zoomed = false;
+
+        // Click Sound
+        const clickSound = new BABYLON.Sound(
+            "clickSound",
+            "../assets/audio_click.wav",
+            scene,
+            () => { /* sound loaded */ },
+            { volume: 0.6, spatialSound: false, autoplay: false }
+        );
+
+        const shapes = [];
+
+        // Box
+        const box = BABYLON.MeshBuilder.CreateBox("box", { size: 2 }, scene);
+        box.position = new BABYLON.Vector3(-14, 6.0, -8);
+        const boxMat = new BABYLON.StandardMaterial("boxMat", scene);
+        boxMat.diffuseColor = new BABYLON.Color3(1, 0.3, 0.3);
+        boxMat.specularColor = new BABYLON.Color3(0.2, 0.2, 0.25);
+        box.material = boxMat;
+        shapes.push(box);
+
+        // Sphere
+        const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {
+            diameter: 4.0,
+            segments: 32
+        }, scene);
+        sphere.position = new BABYLON.Vector3(-2, 8.0, 5);
+        const sphereMat = new BABYLON.StandardMaterial("sphereMat", scene);
+        sphereMat.diffuseColor = new BABYLON.Color3(0.1, 1.0, 1.0);
+        sphereMat.emissiveColor = new BABYLON.Color3(0.3, 0.7, 1.0);
+        sphereMat.specularPower = 512;
+        sphere.material = sphereMat;
+        shapes.push(sphere);
+
+        // Cylinder
+        const cylinder = BABYLON.MeshBuilder.CreateCylinder("cylinder", { height: 2.4, diameter: 2 }, scene);
+        cylinder.position = new BABYLON.Vector3(6, 6.5, -3);
+        const cylinderMat = new BABYLON.StandardMaterial("cylinderMat", scene);
+        cylinderMat.diffuseColor = new BABYLON.Color3(0.4, 1, 0.6);
+        cylinderMat.specularPower = 64;
+        cylinder.material = cylinderMat;
+        cylinder.__spinningFast = false;
+        cylinder.rotation.z = Math.PI / 8;
+        shapes.push(cylinder);
+
+        // Torus
+        const torus = BABYLON.MeshBuilder.CreateTorus("torus", {
+            diameter: 3,
+            thickness: 0.6,
+            tessellation: 32
+        }, scene);
+        torus.position = new BABYLON.Vector3(12, 8.0, 4);
+        const torusMat = new BABYLON.StandardMaterial("torusMat", scene);
+        torusMat.diffuseColor = new BABYLON.Color3(1, 0.85, 0.5);
+        torusMat.emissiveColor = new BABYLON.Color3(0.2, 0.15, 0.05);
+        torus.material = torusMat;
+        shapes.push(torus);
+
+        // Cone
+        const cone = BABYLON.MeshBuilder.CreateCylinder("cone", {
+            height: 2.7,
+            diameterTop: 0,
+            diameterBottom: 2.1,
+            tessellation: 32
+        }, scene);
+        cone.position = new BABYLON.Vector3(2, 6.2, -12);
+        const coneMat = new BABYLON.StandardMaterial("coneMat", scene);
+        coneMat.diffuseColor = new BABYLON.Color3(0.7, 0.6, 1.0);
+        coneMat.emissiveColor = new BABYLON.Color3(0.25, 0.2, 0.6);
+        coneMat.specularPower = 64;
+        cone.material = coneMat;
+        shapes.push(cone);
+
+        const spot = new BABYLON.SpotLight(
+            "coneSpot",
+            new BABYLON.Vector3(2, 13, -6),
+            new BABYLON.Vector3(0, -1.7, -0.3),
+            Math.PI / 3,
+            15,
+            scene
+        );
+        spot.intensity = 2.8;
+        spot.diffuse = new BABYLON.Color3(1.0, 0.9, 1.2);
+
+        // Tile
+        const tile = BABYLON.MeshBuilder.CreateBox("tile", {
+            width: 3,
+            height: 0.15,
+            depth: 3
+        }, scene);
+        tile.position = new BABYLON.Vector3(-8, 6.8, 10);
+        const tileMatFlat = new BABYLON.StandardMaterial("tileMatFlat", scene);
+        tileMatFlat.diffuseColor = new BABYLON.Color3(0.15, 0.75, 0.85);
+        tileMatFlat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        const tileMatBrick = new BABYLON.StandardMaterial("tileMatBrick", scene);
+        tileMatBrick.diffuseTexture = new BABYLON.Texture("https://playground.babylonjs.com/textures/brick.jpg", scene);
+        tileMatBrick.diffuseTexture.uScale = 2;
+        tileMatBrick.diffuseTexture.vScale = 2;
+        tileMatBrick.specularColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+        tile.material = tileMatFlat;
+        tile.__isBrick = false;
+        shapes.push(tile);
+
+        // Pyramid
+        const pyramid = BABYLON.MeshBuilder.CreatePolyhedron("pyramid", { type: 0, size: 2 }, scene);
+        pyramid.position = new BABYLON.Vector3(16, 7.0, -2);
+        const pyramidMat = new BABYLON.StandardMaterial("pyramidMat", scene);
+        pyramidMat.diffuseColor = new BABYLON.Color3(0.95, 0.8, 0.3);
+        pyramid.material = pyramidMat;
+        shapes.push(pyramid);
+
+        // Capsule
+        const capsule = BABYLON.MeshBuilder.CreateCapsule("capsule", { height: 3, radius: 0.8 }, scene);
+        capsule.position = new BABYLON.Vector3(-12, 8.0, 4);
+        const capsuleMat = new BABYLON.StandardMaterial("capsuleMat", scene);
+        capsuleMat.diffuseColor = new BABYLON.Color3(0.5, 0.9, 0.5);
+        capsuleMat.emissiveColor = new BABYLON.Color3(0.05, 0.15, 0.05);
+        capsule.material = capsuleMat;
+        shapes.push(capsule);
+        scene.__fogOn = false;
+
+        // Wireframe box
+        const wireBox = BABYLON.MeshBuilder.CreateBox("wireBox", { size: 1.6 }, scene);
+        wireBox.position = new BABYLON.Vector3(4, 8.5, 12);
+        const wireMat = new BABYLON.StandardMaterial("wireMat", scene);
+        wireMat.diffuseColor = new BABYLON.Color3(0.9, 0.9, 0.9);
+        wireMat.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+        wireBox.material = wireMat;
+        shapes.push(wireBox);
+
+        const allMats = [
+            boxMat, sphereMat, cylinderMat, torusMat, coneMat,
+            tileMatFlat, tileMatBrick, pyramidMat, capsuleMat, wireMat, groundMat
+        ];
+
+        // Add shadows
+        [box, sphere, cylinder, torus, cone, pyramid, capsule, wireBox, tile]
+            .forEach(m => shadowGen.addShadowCaster(m));
+
+        // Ambient motion
+        scene.onBeforeRenderObservable.add(() => {
+            const dt = scene.getEngine().getDeltaTime();
+            const t  = performance.now() * 0.001;
+
+            if (cylinder.__spinningFast) {
+                cylinder.rotation.y += dt * 0.003;
+            } else {
+                cylinder.rotation.y += dt * 0.0008;
+            }
+
+            torus.rotation.y += dt * 0.0012;
+            torus.rotation.z += dt * 0.0004;
+
+            sphere.position.y = 8.0 + Math.sin(t * 2) * 0.30;
+        });
+
+        // Animations
+        const bounceAnim = new BABYLON.Animation(
+            "bounceAnim",
+            "position.y",
+            30,
+            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+        );
+        const baseY = 8.0;
+        bounceAnim.setKeys([
+            { frame: 0,  value: baseY },
+            { frame: 10, value: baseY + 6.0 },
+            { frame: 20, value: baseY }
+        ]);
+        sphere.animations.push(bounceAnim);
+
+        const pulseAnim = new BABYLON.Animation(
+            "pulseAnim",
+            "scaling",
+            30,
+            BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+        );
+        const baseScale = torus.scaling.clone();
+        pulseAnim.setKeys([
+            { frame: 0, value: baseScale },
+            { frame: 6, value: baseScale.scale(1.4) },
+            { frame: 12, value: baseScale }
+        ]);
+        torus.animations.push(pulseAnim);
+
+        // Click Interactions
+        scene.onPointerObservable.add((pointerInfo) => {
+            if (pointerInfo.type !== BABYLON.PointerEventTypes.POINTERPICK) return;
+            const pick = pointerInfo.pickInfo;
+            if (!pick || !pick.hit || !pick.pickedMesh) return;
+
+            const mesh = pick.pickedMesh;
+
+            if (BABYLON.Engine.audioEngine && !BABYLON.Engine.audioEngine.unlocked) {
+                BABYLON.Engine.audioEngine.unlock();
+            }
+
+            if (clickSound.isReady()) {
+                clickSound.play();
+            }
+
+            if (mesh === box) {
+                const c = boxMat.diffuseColor;
+                const isRed = c.r > c.b;
+                boxMat.diffuseColor = isRed
+                    ? new BABYLON.Color3(0.3, 0.55, 1.0)
+                    : new BABYLON.Color3(1, 0.3, 0.3);
+            }
+
+            if (mesh === sphere) {
+                scene.beginAnimation(sphere, 0, 20, false);
+                sphere.rotation.y += Math.PI * 4; // spin 720°
+                sphereMat.diffuseColor = new BABYLON.Color3(1.0, 0.3, 0.3);
+                setTimeout(() => {
+                    sphereMat.diffuseColor = new BABYLON.Color3(0.1, 1.0, 1.0);
+                }, 300);
+            }
+
+            if (mesh === cylinder) {
+                cylinder.__spinningFast = !cylinder.__spinningFast;
+            }
+
+            if (mesh === torus) {
+                scene.beginAnimation(torus, 0, 12, false);
+            }
+
+            if (mesh === cone) {
+                const isDim = spot.intensity < 1.5;
+                spot.intensity = isDim ? 3.2 : 0.8;
+            }
+
+            if (mesh === tile) {
+                tile.__isBrick = !tile.__isBrick;
+                tile.material = tile.__isBrick ? tileMatBrick : tileMatFlat;
+            }
+
+            if (mesh === pyramid) {
+                ground.__zoomed = !ground.__zoomed;
+                const scale = ground.__zoomed ? 12 : 5;
+                groundMat.diffuseTexture.uScale = scale;
+                groundMat.diffuseTexture.vScale = scale;
+                groundMat.bumpTexture.uScale    = scale;
+                groundMat.bumpTexture.vScale    = scale;
+            }
+
+            if (mesh === capsule) {
+                scene.__fogOn = !scene.__fogOn;
+                if (scene.__fogOn) {
+                    scene.fogMode = BABYLON.Scene.FOGMODE_EXP;
+                    scene.fogDensity = 0.02;
+                    scene.fogColor = scene.clearColor.toColor3();
+                } else {
+                    scene.fogMode = BABYLON.Scene.FOGMODE_NONE;
+                }
+            }
+
+            if (mesh === wireBox) {
+                const newWireState = !wireMat.wireframe;
+                allMats.forEach(m => m.wireframe = newWireState);
+            }
+        });
+
+        return scene;
+    };
+
+    const scene = createScene();
+    engine.runRenderLoop(() => {
+        scene.render();
+    });
+
+    window.addEventListener("resize", () => {
+        engine.resize();
+    });
+});
