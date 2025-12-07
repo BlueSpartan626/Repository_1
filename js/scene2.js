@@ -7,94 +7,108 @@ window.addEventListener("DOMContentLoaded", () => {
   const createScene = async () => {
     const scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.12, 0.15, 0.20, 1.0);
+    scene.collisionsEnabled = true;
+    scene.gravity = new BABYLON.Vector3(0, -0.45, 0);
 
-    // --- Player camera (first-person) ---
+    // 👇 Enable pointer lock for proper FPS camera control
+    canvas.addEventListener("click", () => {
+      if (!isPaused) canvas.requestPointerLock();
+    });
+
     const camera = new BABYLON.UniversalCamera("playerCam",
-      new BABYLON.Vector3(0, 5, 0),
-      scene
+      new BABYLON.Vector3(0, 6, 0), scene
     );
     camera.attachControl(canvas, true);
-    camera.speed = 2;
-    camera.angularSensibility = 800;
-
-    scene.collisionsEnabled = true;
+    camera.speed = 0.35;
+    camera.angularSensibility = 950;
+    camera.minZ = 0.3;
     camera.checkCollisions = true;
     camera.applyGravity = true;
     camera.ellipsoid = new BABYLON.Vector3(0.5, 1.7, 0.5);
-    camera.ellipsoidOffset = new BABYLON.Vector3(0, 1.0, 0);
-    scene.gravity = new BABYLON.Vector3(0, -0.98, 0);
 
-    camera.keysUp    = [87, 38]; // W, up-arrow
-    camera.keysDown  = [83, 40]; // S, down-arrow
-    camera.keysLeft  = [65];     // A
-    camera.keysRight = [68];     // D
+    camera.keysUp = [87]; 
+    camera.keysDown = [83];
+    camera.keysLeft = [65];
+    camera.keysRight = [68];
 
-    camera.maxZ = 5000;
-
-    // --- Lights ---
+    // Lights
     const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0,1,0), scene);
-    hemi.intensity = 0.6;
-    hemi.groundColor = new BABYLON.Color3(0.2, 0.3, 0.2);
+    hemi.intensity = 0.75;
 
-    const sun = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-0.3,-1,0.4), scene);
-    sun.position = new BABYLON.Vector3(50, 100, -50);
-    sun.intensity = 1.0;
-    const shadowGen = new BABYLON.ShadowGenerator(2048, sun);
-    shadowGen.useExponentialShadowMap = true;
+    const sun = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-0.4,-1,0.35), scene);
+    sun.position = new BABYLON.Vector3(30, 60, -30);
+    sun.intensity = 1.1;
+    const_shadowGen = new BABYLON.ShadowGenerator(1024, sun);
 
-    // --- Sky / environment ---
-    try {
-      const hdr = new BABYLON.HDRCubeTexture("../assets/sky.hdr", scene, 512, false, true, false, true);
-      scene.environmentTexture = hdr;
-      scene.createDefaultSkybox(hdr, true, 500, 0.5);
-    } catch (e) {
-      console.warn("Skybox load failed", e);
-    }
+    // ⚠ Fix skybox warning → remove mipmap generation
+    const hdr = new BABYLON.HDRCubeTexture("../assets/sky.hdr", scene, 256, false, true, false, true);
+    scene.environmentTexture = hdr;
+    scene.createDefaultSkybox(hdr, true, 350, 0.5);
 
-    // --- Terrain via heightmap ---
+    // Terrain
     BABYLON.MeshBuilder.CreateGroundFromHeightMap(
-      "terrain",
-      "../assets/terrain_heightmap.png",
+      "terrain", "../assets/terrain_heightmap.png",
       {
-        width: 200,
-        height: 200,
-        subdivisions: 200,
-        minHeight: -5,
-        maxHeight: 35,
-        onReady: (ground) => {
+        width: 160,
+        height: 160,
+        subdivisions: 160,
+        minHeight: -1,
+        maxHeight: 28,
+        onReady: ground => {
           ground.checkCollisions = true;
-          const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
-          groundMat.diffuseTexture = new BABYLON.Texture("../assets/ground_diffuse.png", scene);
-          groundMat.bumpTexture    = new BABYLON.Texture("../assets/ground_normal.png", scene);
-          groundMat.diffuseTexture.uScale = 40;
-          groundMat.diffuseTexture.vScale = 40;
-          groundMat.bumpTexture.uScale    = 40;
-          groundMat.bumpTexture.vScale    = 40;
-          ground.material = groundMat;
-          ground.receiveShadows = true;
+          ground.material = new BABYLON.StandardMaterial("gMat", scene);
+          ground.material.diffuseTexture = new BABYLON.Texture("../assets/ground_diffuse.png", scene);
+          ground.material.diffuseTexture.uScale = 
+          ground.material.diffuseTexture.vScale = 30;
 
-          createBoundaryWalls(scene, shadowGen);
+          createWalls(scene); // tighter bounds!
         }
-      },
-      scene
+      }
     );
 
-    // --- Load knight model (.glb) ---
-    try {
-      const result = await BABYLON.SceneLoader.ImportMeshAsync(
-        "",            // load all meshes
-        "../assets/",  // folder path
-        "knight.glb",  // file name
-        scene
-      );
-      console.log("Model loaded:", result.meshes);
-      const root = result.meshes[0];
-      root.position = new BABYLON.Vector3(0, 5, 0);
-      root.scaling  = new BABYLON.Vector3(1,1,1);
-      result.meshes.forEach(m => shadowGen.addShadowCaster(m));
-    } catch (e) {
-      console.warn("Failed to load knight model:", e);
-    }
+    // Knight model visible + positioned in frame
+// --- Load knight model (.glb) ---
+try {
+  const result = await BABYLON.SceneLoader.ImportMeshAsync(
+    "",
+    "../assets/",
+    "knight.glb",
+    scene
+  );
+
+  const knight = result.meshes[0];
+
+  knight.position = new BABYLON.Vector3(0, 5, 1.5); // move slightly in front of camera
+  knight.scaling = new BABYLON.Vector3(1, 1, 1);
+  knight.rotation = new BABYLON.Vector3(0, Math.PI, 0); // face camera
+  knight.isVisible = true;
+
+  result.meshes.forEach(m => {
+    m.isVisible = true;
+    m.receiveShadows = true;
+    m.checkCollisions = true;
+  });
+
+  console.log("Knight loaded and forced visible");
+} catch (e) {
+  console.warn("Failed to load knight model:", e);
+}
+
+    // Jump
+let grounded = false;
+
+scene.registerBeforeRender(() => {
+  const terrainHeight = 2.9;
+  grounded = (camera.position.y <= terrainHeight);
+});
+
+window.addEventListener("keydown", e => {
+  if (e.key.toLowerCase() === "z" && grounded) {
+    camera.cameraDirection.y = 0.32;
+    grounded = false;
+  }
+  if (e.key.toLowerCase() === "p") togglePause();
+});
 
     return scene;
   };
@@ -102,44 +116,39 @@ window.addEventListener("DOMContentLoaded", () => {
   const scenePromise = createScene();
 
   engine.runRenderLoop(async () => {
-    if (!isPaused) {
-      const scene = await scenePromise;
-      if (scene) scene.render();
-    }
+    if (!isPaused) (await scenePromise).render();
   });
 
   window.addEventListener("resize", () => engine.resize());
 
-  // Pause with P
-  window.addEventListener("keydown", (ev) => {
-    if (ev.key === "p" || ev.key === "P") {
-      isPaused = !isPaused;
-      document.getElementById("pauseOverlay").style.display = isPaused ? "flex" : "none";
-    }
-  });
-
-  function createBoundaryWalls(scene, shadowGen) {
-    const size = 210, wallH = 20, thick = 2;
-    const mat = new BABYLON.StandardMaterial("wallMat", scene);
-    mat.diffuseColor = new BABYLON.Color3(0.3,0.3,0.3);
-
-    const positions = [
-      { x: 0,   z: size/2 },
-      { x: 0,   z: -size/2 },
-      { x: size/2, z: 0 },
-      { x: -size/2, z: 0 },
-    ];
-    positions.forEach(pos => {
-      const wall = BABYLON.MeshBuilder.CreateBox("wall", {
-        width: (pos.x === 0 ? size : thick),
-        height: wallH,
-        depth: (pos.z === 0 ? size : thick)
-      }, scene);
-      wall.position = new BABYLON.Vector3(pos.x, wallH/2, pos.z);
-      wall.material = mat;
-      wall.checkCollisions = true;
-      shadowGen.addShadowCaster(wall);
-    });
+  function togglePause() {
+    isPaused = !isPaused;
+    document.exitPointerLock?.();
+    document.getElementById("pauseOverlay").style.display =
+      isPaused ? "flex" : "none";
   }
+
+  // 🔒 Playable area walls tightened
+  function createWalls(scene) {
+  const size = 145;   // ⬅ reduced more
+  const height = 10;
+  const thick = 3;
+  const mat = new BABYLON.StandardMaterial("wallMat", scene);
+  mat.diffuseColor = new BABYLON.Color3(0.12, 0.12, 0.12);
+
+  [
+    {x: 0, z: size/2, w: size, d: thick},
+    {x: 0, z:-size/2, w: size, d: thick},
+    {x: size/2, z: 0, w: thick, d: size},
+    {x:-size/2, z: 0, w: thick, d: size}
+  ].forEach(c => {
+    const w = BABYLON.MeshBuilder.CreateBox("wall", {
+      width:c.w, height, depth:c.d
+    }, scene);
+    w.position = new BABYLON.Vector3(c.x, height/2, c.z);
+    w.checkCollisions = true;
+    w.material = mat;
+  });
+}
 
 });
