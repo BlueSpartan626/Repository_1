@@ -25,6 +25,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const scene = new BABYLON.Scene(engine);
         scene.clearColor = new BABYLON.Color4(0.12, 0.15, 0.20, 1.0);
         scene.collisionsEnabled = true;
+        scene.collisionRetryCount = 10;
 
         let terrain = null;
 
@@ -60,6 +61,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
         const characterScale = 1.35;
         const characterYOffset = -0.90;
+
+        const playerSpawn = new BABYLON.Vector3(0, 8, -34);
 
         canvas.addEventListener("click", () => {
             if (!isPaused && document.pointerLockElement !== canvas) {
@@ -152,19 +155,18 @@ window.addEventListener("DOMContentLoaded", () => {
         });
 
         createWalls(scene);
-        createCamp(scene);
         await loadForestAndScatter(scene, shadowGen);
 
         const playerCollider = BABYLON.MeshBuilder.CreateCapsule(
             "playerCollider",
             {
                 height: 3.4,
-                radius: 0.55,
+                radius: 0.35,
                 tessellation: 12
             },
             scene
         );
-        playerCollider.position = new BABYLON.Vector3(0, 8, 0);
+        playerCollider.position.copyFrom(playerSpawn);
         playerCollider.isVisible = false;
         playerCollider.checkCollisions = true;
 
@@ -510,7 +512,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
                 if (mesh instanceof BABYLON.Mesh) {
                     mesh.receiveShadows = true;
-                    mesh.checkCollisions = true;
+                    mesh.checkCollisions = false;
                     shadowGen.addShadowCaster(mesh, true);
                 }
             });
@@ -528,12 +530,11 @@ window.addEventListener("DOMContentLoaded", () => {
             forestRoot.setEnabled(false);
 
             const chunkPlacements = [
-                { x: -26, z: -18, rot: 0.3, scale: 0.85 },
-                { x:  24, z: -16, rot: 1.1, scale: 0.85 },
-                { x: -28, z:  18, rot: 2.1, scale: 0.90 },
-                { x:  26, z:  20, rot: 2.7, scale: 0.90 },
-                { x:   0, z:  34, rot: 0.5, scale: 0.80 },
-                { x:   0, z: -34, rot: 2.4, scale: 0.80 }
+                { x: -34, z: -2, rot: 0.3, scale: 0.78 },
+                { x:  34, z: -2, rot: 1.1, scale: 0.78 },
+                { x: -30, z: 26, rot: 2.1, scale: 0.82 },
+                { x:  30, z: 26, rot: 2.7, scale: 0.82 },
+                { x:   0, z: 38, rot: 0.5, scale: 0.75 }
             ];
 
             chunkPlacements.forEach((cfg, index) => {
@@ -547,10 +548,13 @@ window.addEventListener("DOMContentLoaded", () => {
                 clone.setEnabled(true);
 
                 const descendants = clone.getChildMeshes(false);
+
                 descendants.forEach((mesh) => {
                     mesh.isPickable = false;
                     mesh.receiveShadows = true;
-                    mesh.checkCollisions = true;
+                    mesh.checkCollisions = false;
+
+                    createCollisionProxyFromMesh(scene, mesh, index);
                 });
             });
         } catch (e) {
@@ -558,70 +562,106 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function createCamp(scene) {
-        const campRoot = new BABYLON.TransformNode("campRoot", scene);
-        campRoot.position = new BABYLON.Vector3(0, 0, 22);
+    function createCollisionProxyFromMesh(scene, sourceMesh, chunkIndex) {
+        const showCollisionDebug = false;
+        const name = sourceMesh.name.toLowerCase();
 
-        const emberMat = new BABYLON.StandardMaterial("emberMat", scene);
-        emberMat.diffuseColor = new BABYLON.Color3(0.9, 0.45, 0.1);
-        emberMat.emissiveColor = new BABYLON.Color3(1.0, 0.45, 0.1);
+        const isFoliage =
+            name.includes("leaf") ||
+            name.includes("leaves") ||
+            name.includes("grass") ||
+            name.includes("flower") ||
+            name.includes("bush") ||
+            name.includes("branch");
 
-        const fireCore = BABYLON.MeshBuilder.CreateSphere(
-            "fireCore",
-            { diameter: 1.0, segments: 12 },
-            scene
+        if (isFoliage) return;
+
+        sourceMesh.computeWorldMatrix(true);
+
+        const bounds = sourceMesh.getBoundingInfo().boundingBox;
+        const min = bounds.minimumWorld;
+        const max = bounds.maximumWorld;
+
+        const width = max.x - min.x;
+        const height = max.y - min.y;
+        const depth = max.z - min.z;
+
+        if (width < 0.2 && depth < 0.2) return;
+        if (height < 0.2) return;
+        if (width > 14 || depth > 14) return;
+
+        const centre = new BABYLON.Vector3(
+            (min.x + max.x) / 2,
+            (min.y + max.y) / 2,
+            (min.z + max.z) / 2
         );
-        fireCore.parent = campRoot;
-        fireCore.position = new BABYLON.Vector3(0, 0.45, 0);
-        fireCore.material = emberMat;
 
-        const fireLight = new BABYLON.PointLight(
-            "fireLight",
-            new BABYLON.Vector3(0, 1.4, 22),
-            scene
-        );
-        fireLight.intensity = 2.8;
-        fireLight.range = 22;
-        fireLight.diffuse = new BABYLON.Color3(1.0, 0.65, 0.3);
+        const isProbablyTree =
+            name.includes("tree") ||
+            name.includes("trunk") ||
+            name.includes("wood") ||
+            (height > 1.7 && height > width * 1.15 && height > depth * 1.15);
 
-        const logMat = new BABYLON.StandardMaterial("logMat", scene);
-        logMat.diffuseColor = new BABYLON.Color3(0.35, 0.22, 0.12);
+        if (isProbablyTree) {
+            const trunkDiameter = BABYLON.Scalar.Clamp(
+                Math.min(width, depth) * 0.7,
+                0.45,
+                1.15
+            );
 
-        const rockMat = new BABYLON.StandardMaterial("campRockMat", scene);
-        rockMat.diffuseColor = new BABYLON.Color3(0.28, 0.28, 0.30);
+            const trunkHeight = BABYLON.Scalar.Clamp(
+                height * 0.9,
+                2.5,
+                6.0
+            );
 
-        for (let i = 0; i < 2; i++) {
-            const log = BABYLON.MeshBuilder.CreateCylinder(
-                `campLog_${i}`,
-                { height: 2.2, diameter: 0.22, tessellation: 8 },
+            const collider = BABYLON.MeshBuilder.CreateCylinder(
+                `trunkCollision_${chunkIndex}_${sourceMesh.uniqueId}`,
+                {
+                    height: trunkHeight,
+                    diameter: trunkDiameter,
+                    tessellation: 12
+                },
                 scene
             );
-            log.parent = campRoot;
-            log.position = new BABYLON.Vector3(0, 0.16, 0);
-            log.rotation.z = Math.PI / 2.5;
-            log.rotation.y = i === 0 ? Math.PI / 4 : -Math.PI / 4;
-            log.material = logMat;
+
+            collider.position = new BABYLON.Vector3(
+                centre.x,
+                min.y + trunkHeight / 2,
+                centre.z
+            );
+
+            collider.checkCollisions = true;
+            collider.isVisible = showCollisionDebug;
+            collider.isPickable = false;
+
+            return;
         }
 
-        const rockPositions = [
-            [-1.1, 0.18, 0.0],
-            [ 1.1, 0.18, 0.0],
-            [ 0.0, 0.18, 1.1],
-            [ 0.0, 0.18,-1.1],
-            [-0.75,0.18, 0.75],
-            [ 0.75,0.18,-0.75]
-        ];
+        const rockWidth = BABYLON.Scalar.Clamp(width * 1.05, 0.75, 4.0);
+        const rockDepth = BABYLON.Scalar.Clamp(depth * 1.05, 0.75, 4.0);
+        const rockHeight = BABYLON.Scalar.Clamp(height * 0.9, 0.5, 2.2);
 
-        rockPositions.forEach((pos, index) => {
-            const rock = BABYLON.MeshBuilder.CreateSphere(
-                `campRock_${index}`,
-                { diameterX: 0.65, diameterY: 0.38, diameterZ: 0.55, segments: 10 },
-                scene
-            );
-            rock.parent = campRoot;
-            rock.position = new BABYLON.Vector3(pos[0], pos[1], pos[2]);
-            rock.material = rockMat;
-        });
+        const collider = BABYLON.MeshBuilder.CreateBox(
+            `rockCollision_${chunkIndex}_${sourceMesh.uniqueId}`,
+            {
+                width: rockWidth,
+                height: rockHeight,
+                depth: rockDepth
+            },
+            scene
+        );
+
+        collider.position = new BABYLON.Vector3(
+            centre.x,
+            min.y + rockHeight / 2,
+            centre.z
+        );
+
+        collider.rotation.y = sourceMesh.rotation.y || 0;
+        collider.checkCollisions = true;
+        collider.isVisible = showCollisionDebug;
+        collider.isPickable = false;
     }
 
     function createWalls(scene) {
