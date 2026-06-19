@@ -11,11 +11,13 @@
     />
     <link rel="stylesheet" href="css/style.css" />
   </head>
+
   <body>
     <div class="main-wrapper">
       <nav class="navbar navbar-expand-lg navbar-custom">
         <div class="container-fluid">
           <a class="navbar-brand" href="index.html">Mindspace</a>
+
           <button
             class="navbar-toggler text-light"
             type="button"
@@ -24,6 +26,7 @@
           >
             ☰
           </button>
+
           <div class="collapse navbar-collapse" id="navMain">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
               <li class="nav-item">
@@ -34,18 +37,18 @@
                 <a
                   class="nav-link dropdown-toggle"
                   href="#"
-                  id="elementsDropdown"
                   role="button"
                   data-bs-toggle="dropdown"
                 >
                   Scenes
                 </a>
+
                 <ul class="dropdown-menu dropdown-menu-dark">
-                  <li><a class="dropdown-item" href="scene1.html">Scene 1 – Shapes</a></li>
-                  <li><a class="dropdown-item" href="scene2.html">Scene 2 – Environment</a></li>
-                  <li><a class="dropdown-item" href="scene3.html">Scene 3 – Player</a></li>
-                  <li><a class="dropdown-item" href="scene4.html">Scene 4 – GUI</a></li>
-                  <li><a class="dropdown-item" href="scene5.html">Scene 5 – Switching</a></li>
+                  <li><a class="dropdown-item" href="Scenes/scene1.html">Scene 1 – Shapes</a></li>
+                  <li><a class="dropdown-item" href="Scenes/scene2.html">Scene 2 – Environment</a></li>
+                  <li><a class="dropdown-item" href="Scenes/scene3.html">Scene 3 – Player & Physics</a></li>
+                  <li><a class="dropdown-item" href="Scenes/scene4.html">Scene 4 – GUI & Audio</a></li>
+                  <li><a class="dropdown-item" href="Scenes/scene5.html">Scene 5 – Realm Switching</a></li>
                 </ul>
               </li>
 
@@ -59,35 +62,381 @@
 
       <main class="main-content container">
         <div class="card">
-          <h1 class="h4 mb-3">Element 5 Documentation</h1>
+          <h1 class="h4 mb-3">Element 5 Documentation – Realm Switching</h1>
           <p>
-            This page is where I explain how Scene 5 works behind the scenes – scene creation,
-            switching logic, and how the GUI ties in. Idea is to prove I understand it and didn’t
-            just paste random code.
+            This documentation explains the design and implementation of Scene 5, the final
+            BabylonJS element in the Mindspace practical portfolio. Scene 5 is a realm-switching
+            demo inspired by <em>The Withering of the World Tree</em>, where the player travels
+            between Midgard, the Yggdrasil realm hub, the remnants of Asgard, and Muspelheim.
+          </p>
+          <p>
+            The main purpose of this scene is to demonstrate scene switching using GUI controls
+            and in-world interactions, while also presenting the result as a small playable game
+            sequence rather than a simple technical test.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Scene 5 concept</h2>
+          <p>
+            Scene 5 is structured around Yggdrasil as a central realm-travel hub. The player can
+            begin from a realm-selection menu, enter Midgard, activate a portal, travel to
+            Yggdrasil, visit Asgard to recover the shard of Mjolnir, return to Yggdrasil, and
+            then unlock Muspelheim as the final realm.
+          </p>
+          <p>
+            Each realm is separated into its own HTML and JavaScript file. This made the scene
+            easier to organise because each location has its own environment, interaction logic,
+            UI, assets, lighting, and visual style.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Scene files and structure</h2>
+          <p>
+            Scene 5 is split across a menu page and four separate realm pages. The menu page is
+            used to choose a starting point, while the realm pages contain the playable areas.
           </p>
 
-          <h2 class="h5 mt-4">Scene concept</h2>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>Scenes/scene5.html</code></td>
+                  <td>Main Scene 5 realm-selection menu.</td>
+                </tr>
+                <tr>
+                  <td><code>js/scene5.js</code></td>
+                  <td>Builds the Yggdrasil-style menu scene, realm buttons, world tree, gates, and animated debris.</td>
+                </tr>
+                <tr>
+                  <td><code>Scenes/Realms/midgard.html</code></td>
+                  <td>Playable Midgard realm page.</td>
+                </tr>
+                <tr>
+                  <td><code>js/Realms/midgard.js</code></td>
+                  <td>Builds Midgard, including the road, forest, ruins, temple portal, player movement, and interaction.</td>
+                </tr>
+                <tr>
+                  <td><code>Scenes/Realms/yggdrasil.html</code></td>
+                  <td>Playable Yggdrasil hub page.</td>
+                </tr>
+                <tr>
+                  <td><code>js/Realms/yggdrasil.js</code></td>
+                  <td>Builds the realm travel hub, realm gates, shard socket, unlock state, and hub interactions.</td>
+                </tr>
+                <tr>
+                  <td><code>Scenes/Realms/asgard.html</code></td>
+                  <td>Playable Asgard remnants page.</td>
+                </tr>
+                <tr>
+                  <td><code>js/Realms/asgard.js</code></td>
+                  <td>Builds the broken Asgard platform, throne area, Mjolnir shard interaction, and return portal.</td>
+                </tr>
+                <tr>
+                  <td><code>Scenes/Realms/muspelheim.html</code></td>
+                  <td>Playable Muspelheim page.</td>
+                </tr>
+                <tr>
+                  <td><code>js/Realms/muspelheim.js</code></td>
+                  <td>Builds the volcanic forge realm, lava streams, sword field, forge interaction, and return portal.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Interaction flow</h2>
+          <ol>
+            <li>The player opens Scene 5 and sees a Yggdrasil-style realm menu.</li>
+            <li>The player can start the intended route by selecting Midgard.</li>
+            <li>In Midgard, the player follows the ruined road to the stone temple.</li>
+            <li>The player interacts with the temple portal to travel to the Yggdrasil hub.</li>
+            <li>In Yggdrasil, the player can inspect realm gates and travel to Asgard.</li>
+            <li>In Asgard, the player collects the shard of Mjolnir.</li>
+            <li>The player returns to Yggdrasil and uses the shard to unlock Muspelheim.</li>
+            <li>In Muspelheim, the player reaches Surtr’s Forge and completes the realm route.</li>
+          </ol>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Scene switching implementation</h2>
           <p>
-            <!-- later: describe the “Mindspace / rooms in the head” idea and how Scene 5 acts as a
-            kind of mental hub where I move between different moods or spaces. -->
+            Scene switching is handled using separate HTML pages for each realm. GUI buttons and
+            in-world interactables change the page using <code>window.location.href</code>.
+            This means each realm can load its own BabylonJS scene independently while still
+            feeling like part of one connected route.
           </p>
 
-          <h2 class="h5 mt-4">Key code snippets</h2>
+          <pre><code>addInteractable("Enter the Yggdrasil Realm Travel Room", new BABYLON.Vector3(0, 0, 21.1), 3.0, () =&gt; {
+    window.location.href = "yggdrasil.html";
+});</code></pre>
+
           <p>
-            <!-- later: paste short snippets like the scene-switch function and button callbacks,
-            then explain in my own words what each bit does. -->
+            The main Scene 5 menu uses Babylon GUI buttons to send the player to the selected
+            realm page.
           </p>
 
-          <h2 class="h5 mt-4">Assets used</h2>
+          <pre><code>button.onPointerUpObservable.add(() =&gt; {
+    window.location.href = href;
+});</code></pre>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Progress and realm unlocks</h2>
           <p>
-            <!-- later: list stuff like Leartes castle.glb, audio_main.mp3 origin, any textures,
-            icons or GUI art that isn’t mine. -->
+            Some progress is stored with <code>localStorage</code>. This is used so the Yggdrasil
+            hub can remember whether the player has collected the shard of Mjolnir or unlocked
+            Muspelheim, even after moving between different realm pages.
           </p>
 
-          <h2 class="h5 mt-4">What I learned</h2>
+          <pre><code>const progress = {
+    hasShard: localStorage.getItem("scene5HasMjolnirShard") === "true",
+    muspelUnlocked: localStorage.getItem("scene5MuspelheimUnlocked") === "true"
+};</code></pre>
+
           <p>
-            <!-- later: quick reflection on HTML/CSS, JavaScript basics again, BabylonJS scenes,
-            collisions, GUI, audio, and switching. -->
+            When the player collects the Mjolnir shard in Asgard, the value is saved. Yggdrasil
+            can then read this value and allow the player to unlock the Muspelheim gate.
+          </p>
+
+          <pre><code>localStorage.setItem("scene5HasMjolnirShard", "true");</code></pre>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Player movement and camera</h2>
+          <p>
+            The realm scenes use a third-person player controller. The player can move with WASD,
+            sprint with Shift, jump with Space, interact with E, and toggle a debug camera with N.
+            The debug camera was useful during development because it allowed each realm to be
+            inspected from above while checking layout, collision, and visual design.
+          </p>
+
+          <pre><code>if (keys.w) move.addInPlace(forward);
+if (keys.s) move.subtractInPlace(forward);
+if (keys.a) move.subtractInPlace(right);
+if (keys.d) move.addInPlace(right);</code></pre>
+
+          <p>
+            Gravity and jumping are handled manually by applying vertical velocity to the player
+            and then snapping them back to the current walk height when they land.
+          </p>
+
+          <pre><code>player.verticalVelocity -= player.gravity * delta;
+player.root.position.y += player.verticalVelocity * delta;
+
+if (player.root.position.y &lt;= walkHeight) {
+    player.root.position.y = walkHeight;
+    player.verticalVelocity = 0;
+    player.isGrounded = true;
+}</code></pre>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Player model and animation</h2>
+          <p>
+            The final Scene 5 player uses the Solus knight model, reused from Scene 2. This gave
+            the realm sequence a more complete game-like feel than the earlier placeholder black
+            character mesh. The Solus model is imported with BabylonJS and its animation groups
+            are searched for idle, walk, and run animations.
+          </p>
+
+          <pre><code>BABYLON.SceneLoader.ImportMeshAsync(
+    "",
+    "../../assets/",
+    "Solus_the_knight.gltf",
+    scene
+).then((result) =&gt; {
+    playerRef.idleAnim = chooseBestAnimation(result.animationGroups, ["idle"]);
+    playerRef.walkAnim = chooseBestAnimation(result.animationGroups, ["walk", "move"]);
+    playerRef.runAnim = chooseBestAnimation(result.animationGroups, ["run", "sprint"]);
+});</code></pre>
+
+          <p>
+            Animation playback is linked to movement. If the player is not moving, the idle
+            animation plays. If the player is walking, the walk animation plays. If the player
+            is sprinting, the run animation plays.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Collision and interaction</h2>
+          <p>
+            Collision in Scene 5 is handled using simple custom collision zones. These are stored
+            as circles or boxes in a <code>blockers</code> array. This approach was chosen because
+            many objects in Scene 5 are decorative meshes, and simple invisible collision zones
+            were easier to control than using full mesh collisions for everything.
+          </p>
+
+          <pre><code>function addCollisionCircle(x, z, radius) {
+    blockers.push({
+        type: "circle",
+        x,
+        z,
+        radius
+    });
+}</code></pre>
+
+          <p>
+            Interactions are handled using an <code>interactables</code> array. Each interactable
+            stores prompt text, a position, a radius, and an action. When the player is close
+            enough, the UI prompt appears and pressing E triggers the action.
+          </p>
+
+          <pre><code>addInteractable("Yggdrasil Return Gate", new BABYLON.Vector3(0, 0, -10.9), 3.1, () =&gt; {
+    window.location.href = "yggdrasil.html";
+});</code></pre>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Realm design summary</h2>
+
+          <h3 class="h6">Midgard</h3>
+          <p>
+            Midgard is designed as a ruined outdoor route. It includes a forest, mountain boundary,
+            ruined structures, camp details, a cave entrance, a dirt road, and a stone temple portal.
+            It acts as the starting point and introduces the player to the realm-travel idea.
+          </p>
+
+          <h3 class="h6">Yggdrasil Hub</h3>
+          <p>
+            Yggdrasil is the central travel hub. It contains a large world tree, realm gates,
+            a circular platform, portal effects, floating debris, and a shard socket used to unlock
+            Muspelheim. It connects the different realm pages together.
+          </p>
+
+          <h3 class="h6">Asgard Remnants</h3>
+          <p>
+            Asgard is presented as a broken floating remnant after Ragnarök. It includes a fractured
+            stone platform, a broken throne area, floating debris, a return portal, and the shard of
+            Mjolnir. The shard is the key item needed to progress.
+          </p>
+
+          <h3 class="h6">Muspelheim</h3>
+          <p>
+            Muspelheim is the final volcanic realm. It contains lava streams, black basalt paths,
+            volcanic rocks, a sword field, ember particles, and Surtr’s Forge. The player crosses
+            the arena and interacts with the forge to complete the route.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Assets used</h2>
+          <p>
+            The scene uses a mixture of procedural BabylonJS geometry and imported assets. Many
+            objects, such as platforms, portals, trees, ruins, gates, lava paths, collision zones,
+            and decorative debris, are built directly in JavaScript using BabylonJS mesh builders.
+          </p>
+
+          <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Use</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Solus the Knight model</td>
+                  <td>Animated player character used across the Scene 5 realms.</td>
+                  <td><code>assets/Solus_the_knight.gltf</code></td>
+                </tr>
+                <tr>
+                  <td>Midgard texture folders</td>
+                  <td>Grass, dirt, rock, bark, moss, cloth, and temple stone materials.</td>
+                  <td><code>assets/Scene 5 Assets/Textures/Midgard/</code></td>
+                </tr>
+                <tr>
+                  <td>Muspelheim lava texture</td>
+                  <td>Lava streams, lava pool, and volcanic glow materials.</td>
+                  <td><code>assets/Scene 5 Assets/Textures/Muspelheim/Lava/</code></td>
+                </tr>
+                <tr>
+                  <td>Realm skyboxes</td>
+                  <td>Background sky/environment for Midgard, Yggdrasil, Asgard, and Muspelheim.</td>
+                  <td><code>assets/Scene 5 Assets/Skyboxes/</code></td>
+                </tr>
+                <tr>
+                  <td>Procedural BabylonJS geometry</td>
+                  <td>Realm gates, platforms, portals, trees, rocks, ruins, forge objects, runes, and collision markers.</td>
+                  <td>Created directly in JavaScript.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Asset licences and sources should be checked against the downloaded asset folders and
+            any original download pages before submission. The final repository should only include
+            assets that are permitted for coursework use.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">User interface</h2>
+          <p>
+            The user interface is split between HTML and Babylon GUI. Each page has a top-left HTML
+            information panel explaining the current realm. Babylon GUI is then used for in-scene
+            prompts, objectives, controls, and the Scene 5 menu buttons.
+          </p>
+          <p>
+            The UI was adjusted near the end of development so the realm pages were more consistent:
+            prompts appear near the bottom of the screen, objective text appears below the prompt,
+            and controls remain visible without covering the main environment.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Testing and debugging</h2>
+          <p>
+            Scene 5 was tested by moving through the complete route and checking that each page loaded,
+            player movement worked, interaction prompts appeared, and scene switching sent the player
+            to the correct realm page. The browser console was also used to catch JavaScript errors,
+            missing functions, incorrect paths, and missing assets.
+          </p>
+
+          <ul>
+            <li>Checked that the Scene 5 menu buttons open the correct realm pages.</li>
+            <li>Checked that Midgard can switch to Yggdrasil through the temple portal.</li>
+            <li>Checked that Asgard saves the Mjolnir shard state.</li>
+            <li>Checked that Yggdrasil reads progress and unlocks Muspelheim.</li>
+            <li>Checked that Muspelheim can return to Yggdrasil.</li>
+            <li>Used the debug camera to inspect collision, layout, scale, and visual design.</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">Reflection</h2>
+          <p>
+            Scene 5 developed from a simple realm-switching idea into a more complete playable
+            sequence. The main challenge was keeping the scene manageable while still making each
+            realm feel visually different. Splitting each realm into its own page and JavaScript file
+            made the project easier to organise and reduced the complexity of switching between
+            large environments.
+          </p>
+          <p>
+            The project helped develop a better understanding of BabylonJS scene creation, imported
+            models, animation groups, procedural mesh building, GUI controls, localStorage progression,
+            skybox loading, and custom interaction systems. The final Scene 5 demonstrates both the
+            required technical scene switching and a more creative game-like structure.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2 class="h5">AI use declaration</h2>
+          <p>
+            I confirm that this project and its implementation are my own work.
+            All code, structure, scene development, interaction systems, and written project content were created by me.
+            Any external assets, libraries, frameworks, tutorials, or resources used have been referenced where appropriate.
           </p>
         </div>
       </main>

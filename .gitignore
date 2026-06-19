@@ -1,0 +1,29 @@
+
+# Large original asset/source archives
+*.zip
+*.rar
+*.7z
+
+# Large source/editor formats not needed by the website
+*.blend
+*.fbx
+*.obj
+*.exr
+*.gro
+
+# Unused downloaded texture/model source files
+assets/Scene 5 Assets/Textures/**/*.bin
+assets/Scene 5 Assets/Textures/**/*.gltf
+assets/Scene 5 Assets/Textures/**/height.png
+assets/Scene 5 Assets/Textures/**/ao.png
+assets/Scene 5 Assets/Textures/**/roughness.png
+assets/Scene 5 Assets/Textures/**/emission.png
+assets/Scene 5 Assets/Textures/**/*_arm_4k.png
+assets/Scene 5 Assets/Textures/**/*_rough_ao_4k.png
+assets/Scene 5 Assets/Textures/**/*_nor_dx_4k.png
+assets/Scene 5 Assets/Textures/**/*_nor_gl_4k.png
+assets/Scene 5 Assets/Textures/**/*_normal_dx_4k.png
+
+# System junk
+.DS_Store
+Thumbs.db
